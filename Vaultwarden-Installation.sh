@@ -7,12 +7,12 @@ dir=/Vaultwarden
 dircert=/Vaultwarden/Cert
 
 #Installation of dependencies
-apt update -y && apt upgrade -y
+#apt update -y && apt upgrade -y --> Descomment 
 	#Install Docker
-	apt install -y docker docker-compose
-	#Install OpenSSL and Nginx (Reverse Proxy)
-	apt install -y openssl nginx
-  mkdir -p $dircert && cd $dircert && cp -r /etc/ssl/* ./
+#	apt install -y docker docker-compose --> Descomment 
+	#Install OpenSSL and Nginx (Reverse Proxy) 
+#	apt install -y openssl nginx --> Descomment
+  mkdir -p $dircert/newcerts && cd $dircert && cp -r /etc/ssl/* ./
   touch index.txt
   echo "1000" > serial
 
@@ -34,15 +34,23 @@ read -r ou
 echo -n "Email Address (Ex: email@example.com) [Default: " "]: "
 read -r email
 
-
 #Creating CA
+vaultdomain=vault.$domain
 
 #Generate Private Key of CA
-#openssl genrsa -out $domain.key 2048 --> Without password in private key
-echo -n "Type one password to your private key"
-openssl genrsa -aes256 -out $domain.key 4096
+#openssl genrsa -out private/l$domain.key 2048 --> Without password in private key
+echo -n "Type one password to your private key..."
+openssl genrsa -aes256 -out private/$domain.key 4096
 #Generate Root CA
-openssl req -new -x509 -days 3650 -key $domain.key -out $domain.csr -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
+openssl req -new -x509 -days 3650 -key private/$domain.key -out $domain.pem -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
+#Editing openssl.cnf
+sed -i -e "s|./demoCA|$dircert|g" openssl.cnf
+sed -i -e "s|cacert.pem|$domain.pem|g" openssl.cnf
+sed -i -e "s|cakey.pem|$domain.key|g" openssl.cnf
+#Generate CA
+openssl genrsa -out $vaultdomain.key 2048
+openssl req -new -key $vaultdomain.key -out $vaultdomain.csr -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
+openssl ca -config openssl.cnf -in $vaultdomain.csr -out $vaultdomain.pem
 
 #Install Vaultwarden
 
@@ -54,7 +62,7 @@ printf \
      container_name: vaultwarden\t
      restart: unless-stopped\t
      environment:\t
-       DOMAIN: $domain\t
+       DOMAIN: $vaultdomain\t
      volumes:\t
        - ./vw-data/:/data/\t
      ports:\t
