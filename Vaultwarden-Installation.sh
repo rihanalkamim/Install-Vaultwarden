@@ -16,9 +16,17 @@ dircert=/Vaultwarden/Cert
   touch index.txt
   echo "1000" > serial
 
-#Inputs
+#Input of domain
 echo -n "Your domain (Ex: intern.domain) [*]: "
 read -r domain
+#Verify domain input
+while [[ -z $domain || $domain == " " ]]; do
+  echo -en "Your domain its necessary (Ex: alk.local):"
+  read -r domain
+done
+echo "Perfect, let's go issue your certificate."
+
+#Inputs of certificate
 echo -n "Country Name (Ex: US) [Default: "AU"]: "
 read -r country
 echo -n "State or Province (Ex: Georgia) [Default: " "]: "
@@ -33,6 +41,9 @@ read -r ou
 #read -r cn
 echo -n "Email Address (Ex: email@example.com) [Default: " "]: "
 read -r email
+
+#Validate if variables its different of " "
+variables=(country, state, city, organization, ou, email)
 
 #Creating CA
 vaultdomain=vault.$domain
