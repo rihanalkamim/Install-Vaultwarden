@@ -43,15 +43,23 @@ echo -n "Email Address (Ex: email@example.com) [Default: " "]: "
 read -r email
 
 #Validate if variables its different of " "
-variables=(country, state, city, organization, ou, email)
+variables=($country $state $city $organization $ou $email)
+for i in ${variables[@]}; do
+  if [[ $i -eq "" || $i -eq " " ]]; then
+    echo "$i - TESte"
+  else
+    echo " "
+  fi 
+done
 
 #Creating CA
 vaultdomain=vault.$domain
 
 #Generate Private Key of CA
+
 #openssl genrsa -out private/l$domain.key 2048 --> Without password in private key
 echo -n "Type one password to your private key..."
-openssl genrsa -aes256 -out private/$domain.key 4096
+openssl genrsa -aes256 -out private/$domain.key 4096 #With password in private key
 #Generate Root CA
 openssl req -new -x509 -days 3650 -key private/$domain.key -out $domain.pem -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
 #Editing openssl.cnf
