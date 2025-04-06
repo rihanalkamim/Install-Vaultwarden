@@ -32,12 +32,12 @@ read_password() {
   else
     while [[ $password1 != $password2 ]]; do
       echo -n "Password not match, try again: " >&2
-      echo >&2
       read -s password1
+      echo >&2
 
       echo -n "Type again: " >&2
-      echo >&2
       read -s password2
+      echo >&2
     done
     echo "Perfect, now we go issue your private key and CA" >&2
   fi
@@ -90,15 +90,15 @@ vaultdomain=vault.$domain
 passw=$(read_password)
 openssl genrsa -aes256 -passout pass:$passw -out private/$domain.key 4096 #With password in private key
 #Generate Root CA
-openssl req -new -x509 -days 3650 -key private/$domain.key -out $domain.pem -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
+openssl req -new -x509 -days 3650 -key private/$domain.key -passin pass:$passw -out $domain.pem -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
 #Editing openssl.cnf
 sed -i -e "s|./demoCA|$dircert|g" openssl.cnf
 sed -i -e "s|cacert.pem|$domain.pem|g" openssl.cnf
 sed -i -e "s|cakey.pem|$domain.key|g" openssl.cnf
 #Generate CA
 openssl genrsa -out $vaultdomain.key 2048
-openssl req -new -key $vaultdomain.key -out $vaultdomain.csr -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
-openssl ca -config openssl.cnf -in $vaultdomain.csr -out $vaultdomain.pem
+openssl req -new -key $vaultdomain.key -passin pass:$passw -out $vaultdomain.csr -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
+openssl ca -config openssl.cnf -in $vaultdomain.csr -out $vaultdomain.pem -passin pass:$passw
 
 #Install Vaultwarden
 
