@@ -15,6 +15,36 @@ read_default() {
   echo "${input:-$default}"
 }
 
+read_password() {
+  local password1
+  local password2
+
+  echo -n "Type one password to your private key: " >&2
+  read -s password1
+  echo >&2
+
+  echo -n "Type again: " >&2
+  read -s password2
+  echo >&2
+
+  if [[ $password1 == $password2 ]]; then 
+    echo "Perfect, now we go issue your private key and CA" >&2
+  else
+    while [[ $password1 != $password2 ]]; do
+      echo -n "Password not match, try again: " >&2
+      echo >&2
+      read -s password1
+
+      echo -n "Type again: " >&2
+      echo >&2
+      read -s password2
+    done
+    echo "Perfect, now we go issue your private key and CA" >&2
+  fi
+
+  echo "$password1"
+}
+
 #Installation of dependencies
 #apt update -y && apt upgrade -y --> Descomment 
 	#Install Docker
@@ -57,9 +87,8 @@ vaultdomain=vault.$domain
 #Generate Private Key of CA
 
 #openssl genrsa -out private/l$domain.key 2048 --> Without password in private key
-echo -n "Type one password to your private key..."
-
-openssl genrsa -aes256 -passout pass: -out private/$domain.key 4096 #With password in private key
+passw=$(read_password)
+openssl genrsa -aes256 -passout pass:$passw -out private/$domain.key 4096 #With password in private key
 #Generate Root CA
 openssl req -new -x509 -days 3650 -key private/$domain.key -out $domain.pem -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
 #Editing openssl.cnf
