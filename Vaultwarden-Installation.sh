@@ -6,6 +6,15 @@
 dir=/Vaultwarden
 dircert=/Vaultwarden/Cert
 
+#Functions
+read_default() {
+  local default=$1
+  local input
+
+  read -r input
+  echo "${input:-$default}"
+}
+
 #Installation of dependencies
 #apt update -y && apt upgrade -y --> Descomment 
 	#Install Docker
@@ -28,29 +37,19 @@ echo "Perfect, let's go issue your certificate."
 
 #Inputs of certificate
 echo -n "Country Name (Ex: US) [Default: "AU"]: "
-read -r country
-echo -n "State or Province (Ex: Georgia) [Default: " "]: "
-read -r state
-echo -n "City (Ex: Atlanta) [Default: " "]: "
-read -r city
-echo -n "Organization (Ex: Atlanta) [Default: " "]: "
-read -r organization
-echo -n "Organization Unit (Ex: DIT) [Default: " "]: "
-read -r ou
-#echo -n "Common Name (Ex: intern.domain) [Default: " "]: "
-#read -r cn
-echo -n "Email Address (Ex: email@example.com) [Default: " "]: "
-read -r email
-
-#Validate if variables its different of " "
-variables=($country $state $city $organization $ou $email)
-for i in ${variables[@]}; do
-  if [[ $i -eq "" || $i -eq " " ]]; then
-    echo "$i - TESte"
-  else
-    echo " "
-  fi 
-done
+country=$(read_default "AU")
+echo -n "State or Province (Ex: Georgia) [Default: "N/A"]: "
+state=$(read_default "NA")
+echo -n "City (Ex: Atlanta) [Default: "N/A"]: "
+city=$(read_default "NA")
+echo -n "Organization (Ex: Atlanta) [Default: "N/A"]: "
+organization=$(read_default "NA")
+echo -n "Organization Unit (Ex: DIT) [Default: "N/A"]: "
+ou=$(read_default "NA")
+#echo -n "Common Name (Ex: intern.domain) [Default: "N/A"]: "
+#cn=$(read_default "NA")
+echo -n "Email Address (Ex: email@example.com) [Default: "N/A"]: "
+email=$(read_default "NA")
 
 #Creating CA
 vaultdomain=vault.$domain
@@ -59,7 +58,8 @@ vaultdomain=vault.$domain
 
 #openssl genrsa -out private/l$domain.key 2048 --> Without password in private key
 echo -n "Type one password to your private key..."
-openssl genrsa -aes256 -out private/$domain.key 4096 #With password in private key
+
+openssl genrsa -aes256 -passout pass: -out private/$domain.key 4096 #With password in private key
 #Generate Root CA
 openssl req -new -x509 -days 3650 -key private/$domain.key -out $domain.pem -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
 #Editing openssl.cnf
