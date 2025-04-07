@@ -28,7 +28,7 @@ read_password() {
   echo >&2
 
   if [[ $password1 == $password2 ]]; then 
-    echo "Perfect, now we go issue your private key and CA" >&2
+    echo "Match" 
   else
     while [[ $password1 != $password2 ]]; do
       echo -n "Password not match, try again: " >&2
@@ -39,7 +39,6 @@ read_password() {
       read -s password2
       echo >&2
     done
-    echo "Perfect, now we go issue your private key and CA" >&2
   fi
 
   echo "$password1"
@@ -88,6 +87,7 @@ vaultdomain=vault.$domain
 
 #openssl genrsa -out private/l$domain.key 2048 --> Without password in private key
 passw=$(read_password)
+echo -e "--\nPerfect, now we go issue your private key and CA.\nWait a few seconds.\n"
 openssl genrsa -aes256 -passout pass:$passw -out private/$domain.key 4096 #With password in private key
 #Generate Root CA
 openssl req -new -x509 -days 3650 -key private/$domain.key -passin pass:$passw -out $domain.pem -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
@@ -99,20 +99,101 @@ sed -i -e "s|cakey.pem|$domain.key|g" openssl.cnf
 openssl genrsa -out $vaultdomain.key 2048
 openssl req -new -key $vaultdomain.key -passin pass:$passw -out $vaultdomain.csr -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
 openssl ca -config openssl.cnf -in $vaultdomain.csr -out $vaultdomain.pem -passin pass:$passw
+#Create fullchain
+#cat $vaultdomain.pem >> fullchain.pem
+#cat $domain.pem >> fullchain.pem
 
 #Install Vaultwarden
 
 cd $dir
-printf \
-"services:\t
-   vaultwarden:\t
-     image: vaultwarden/server:latest\t
-     container_name: vaultwarden\t
-     restart: unless-stopped\t
-     environment:\t
-       DOMAIN: $vaultdomain\t
-     volumes:\t
-       - ./vw-data/:/data/\t
-     ports:\t
-       - 80:80" \
-> compose.yaml
+#Create compose.yaml
+cat <<EOF > compose.yaml
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    environment:
+      DOMAIN: https://$vaultdomain
+    volumes:
+      - ./vw-data/:/data/
+    ports:
+      - 8000:80
+EOF
+
+#Create nginx conf
+cat <<EOF > /etc/nginx/conf.d/$vaultdomain.conf
+# The "upstream" directives ensure that you have a http/1.1 connection
+# This enables the keepalive option and better performance
+#
+# Define the server IP and ports here.
+upstream $vaultdomain {
+#  zone vaultwarden-default 64k;
+  server localhost:8000;
+  keepalive 2;
+}
+
+# Needed to support websocket connections
+# See: https://nginx.org/en/docs/http/websocket.html
+# Instead of "close" as stated in the above link we send an empty value.
+# Else all keepalive connections will not work.
+map \$http_upgrade \$connection_upgrade {
+    default upgrade;
+    ''      "";
+}
+
+# Redirect HTTP to HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name $vaultdomain;
+
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    # For older versions of nginx appended http2 to the listen line after ssl and remove "http2 on"
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    #http2 on;
+    server_name $vaultdomain;
+
+    #access_log  /var/log/nginx/$vaultdomain.access.log main;
+    #error_log   /var/log/nginx/$vaultdomain.error.log;
+
+    # Specify SSL Config when needed
+    ssl_trusted_certificate $dircert/fullchain.pem;
+    ssl_certificate_key $dircert/$vaultdomain.pem;
+    ssl_certificate $dircert/fullchain.pem;
+    add_header Strict-Transport-Security "max-age=31536000;";
+
+    client_max_body_size 525M;
+
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection \$connection_upgrade;
+
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+
+    location / {
+      proxy_pass http://$vaultdomain/;
+    }
+
+    # Optionally add extra authentication besides the ADMIN_TOKEN
+    # Remove the comments below `#` and create the htpasswd_file to have it active
+    #
+    #location /admin {
+      # See: https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-http-basic-authentication/
+      #auth_basic "Private";
+      #auth_basic_user_file /app/vault/htpasswd;
+      #
+      #proxy_pass http://$vaultdomain/;
+    #}
+}
+EOF
+
+#Start docker-compose
+docker-compose up
