@@ -132,7 +132,7 @@ cat <<EOF > /etc/nginx/conf.d/$vaultdomain.conf
 # Define the server IP and ports here.
 upstream $vaultdomain {
 #  zone vaultwarden-default 64k;
-  server 192.168.0.8:8000;
+  server 127.0.0.1:8000;
   keepalive 2;
 }
 
