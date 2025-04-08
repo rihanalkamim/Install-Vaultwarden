@@ -85,10 +85,13 @@ vaultdomain=vault.$domain
 
 #Generate Private Key of CA
 
-#openssl genrsa -out private/l$domain.key 2048 --> Without password in private key
+#Without password in private key
+#openssl genrsa -out private/l$domain.key 2048
+
 passw=$(read_password)
 echo -e "--\nPerfect, now we go issue your private key and CA.\nWait a few seconds.\n"
-openssl genrsa -aes256 -passout pass:$passw -out private/$domain.key 4096 #With password in private key
+#With password in private key
+openssl genrsa -aes256 -passout pass:$passw -out private/$domain.key 4096 
 #Generate Root CA
 openssl req -new -x509 -days 3650 -key private/$domain.key -passin pass:$passw -out $domain.pem -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
 #Editing openssl.cnf
@@ -100,8 +103,8 @@ openssl genrsa -out $vaultdomain.key 2048
 openssl req -new -key $vaultdomain.key -passin pass:$passw -out $vaultdomain.csr -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
 openssl ca -config openssl.cnf -in $vaultdomain.csr -out $vaultdomain.pem -passin pass:$passw
 #Create fullchain
-#cat $vaultdomain.pem >> fullchain.pem
-#cat $domain.pem >> fullchain.pem
+cat $vaultdomain.pem >> fullchain.pem
+cat $domain.pem >> fullchain.pem
 
 #Install Vaultwarden
 
@@ -129,7 +132,7 @@ cat <<EOF > /etc/nginx/conf.d/$vaultdomain.conf
 # Define the server IP and ports here.
 upstream $vaultdomain {
 #  zone vaultwarden-default 64k;
-  server localhost:8000;
+  server 192.168.0.8:8000;
   keepalive 2;
 }
 
@@ -163,7 +166,7 @@ server {
 
     # Specify SSL Config when needed
     ssl_trusted_certificate $dircert/fullchain.pem;
-    ssl_certificate_key $dircert/$vaultdomain.pem;
+    ssl_certificate_key $dircert/$vaultdomain.key;
     ssl_certificate $dircert/fullchain.pem;
     add_header Strict-Transport-Security "max-age=31536000;";
 
@@ -196,4 +199,6 @@ server {
 EOF
 
 #Start docker-compose
-docker-compose up
+docker-compose up -d
+nginx -t
+nginx -s reload
