@@ -27,8 +27,21 @@ read_password() {
   read -s password2
   echo >&2
 
+  #Verify if passowrd is null
+  if [[ -z "${password1// }" || -z "${password2// }" ]]; then
+    while [[ -z "${password1// }" || -z "${password2// }" ]]; do
+      echo -n "Password is null, try again: " >&2
+      read -s password1
+      echo >&2
+
+      echo -n "Type again: " >&2
+      read -s password2
+      echo >&2
+    done
+  fi
+
   if [[ $password1 == $password2 ]]; then 
-    echo "Match" 
+    echo "Match"
   else
     while [[ $password1 != $password2 ]]; do
       echo -n "Password not match, try again: " >&2
@@ -44,12 +57,20 @@ read_password() {
   echo "$password1"
 }
 
+argon_token() {
+  local passw=$1
+  local token
+
+  token=$(echo -n "$passw" | argon2 somesalt -t 2 -m 16 -p 1 | grep Encoded | awk '{print $2}')
+  echo "$token"
+}
+
 #Installation of dependencies
 #apt update -y && apt upgrade -y --> Descomment 
 	#Install Docker
 #	apt install -y docker docker-compose --> Descomment 
 	#Install OpenSSL and Nginx (Reverse Proxy) 
-#	apt install -y openssl nginx --> Descomment
+#	apt install -y openssl nginx argon2 --> Descomment
   mkdir -p $dircert/newcerts && cd $dircert && cp -r /etc/ssl/* ./
   touch index.txt
   echo "1000" > serial
@@ -89,26 +110,30 @@ vaultdomain=vault.$domain
 #openssl genrsa -out private/l$domain.key 2048
 
 passw=$(read_password)
-echo -e "--\nPerfect, now we go issue your private key and CA.\nWait a few seconds.\n"
+echo -e "--\nPerfect, now we go issue your private key and CA.\nWait a few seconds.\n" 
 #With password in private key
-openssl genrsa -aes256 -passout pass:$passw -out private/$domain.key 4096 
+openssl genrsa -aes256 -passout pass:"$passw" -out private/$domain.key 4096 
 #Generate Root CA
-openssl req -new -x509 -days 3650 -key private/$domain.key -passin pass:$passw -out $domain.pem -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
+openssl req -new -x509 -days 3650 -key private/$domain.key -passin pass:"$passw" -out $domain.pem -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
 #Editing openssl.cnf
 sed -i -e "s|./demoCA|$dircert|g" openssl.cnf
 sed -i -e "s|cacert.pem|$domain.pem|g" openssl.cnf
 sed -i -e "s|cakey.pem|$domain.key|g" openssl.cnf
 #Generate CA
 openssl genrsa -out $vaultdomain.key 2048
-openssl req -new -key $vaultdomain.key -passin pass:$passw -out $vaultdomain.csr -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
-openssl ca -config openssl.cnf -in $vaultdomain.csr -out $vaultdomain.pem -passin pass:$passw
+openssl req -new -key $vaultdomain.key -passin pass:"$passw" -out $vaultdomain.csr -subj "/C=$country/ST=$state/L=$city/O=$organization/OU=$ou/CN=$domain"
+openssl ca -config openssl.cnf -in $vaultdomain.csr -out $vaultdomain.pem -passin pass:"$passw"
 #Create fullchain
 cat $vaultdomain.pem >> fullchain.pem
 cat $domain.pem >> fullchain.pem
 
 #Install Vaultwarden
-
 cd $dir
+
+#Create Argon Token
+token=$(argon_token "$passw")
+echo $token
+
 #Create compose.yaml
 cat <<EOF > compose.yaml
 services:
@@ -118,6 +143,8 @@ services:
     restart: unless-stopped
     environment:
       DOMAIN: https://$vaultdomain
+      ADMIN_TOKEN: '$token'
+      #WEBSOCKET_ENABLED: true
     volumes:
       - ./vw-data/:/data/
     ports:
