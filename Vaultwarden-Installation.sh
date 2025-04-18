@@ -225,6 +225,9 @@ server {
 }
 EOF
 
+#Removing variable interpolation in compose.yaml
+sed -i -e '/ADMIN_TOKEN/ s|\$|$$|g' compose.yaml
+
 #Start docker-compose
 docker-compose up -d
 nginx -t
