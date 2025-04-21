@@ -66,12 +66,11 @@ argon_token() {
 }
 
 #Installation of dependencies
-export DEBIAN_FRONTEND=noninteractive
-apt update -y && apt upgrade -yq --no-install-recommends 
+#apt update -y && apt upgrade -y --> Descomment 
 	#Install Docker
-	apt install -yq --no-install-recommends docker docker-compose
+#	apt install -y docker docker-compose --> Descomment 
 	#Install OpenSSL and Nginx (Reverse Proxy) 
-	apt install -yq --no-install-recommends openssl nginx argon2
+#	apt install -y openssl nginx argon2 --> Descomment
   mkdir -p $dircert/newcerts && cd $dircert && cp -r /etc/ssl/* ./
   touch index.txt
   echo "1000" > serial
@@ -107,13 +106,11 @@ vaultdomain=vault.$domain
 
 #Generate Private Key of CA
 
-#Reading password
-passw=$(read_password)
-echo -e "--\nPerfect, now we go issue your private key and CA.\nWait a few seconds.\n"
-
 #Without password in private key
 #openssl genrsa -out private/l$domain.key 2048
 
+passw=$(read_password)
+echo -e "--\nPerfect, now we go issue your private key and CA.\nWait a few seconds.\n" 
 #With password in private key
 openssl genrsa -aes256 -passout pass:"$passw" -out private/$domain.key 4096 
 #Generate Root CA
@@ -134,7 +131,7 @@ cat $domain.pem >> fullchain.pem
 cd $dir
 
 #Create Argon Token
-token=$(argon_token "$passw")
+token=$(echo -n "$passw" | argon2 somesalt -t 2 -m 16 -p 1 | grep Encoded | awk '{print $2}')
 
 #Create compose.yaml
 cat <<EOF > compose.yaml
@@ -231,10 +228,6 @@ EOF
 sed -i -e '/ADMIN_TOKEN/ s|\$|$$|g' compose.yaml
 
 #Start docker-compose
-docker-compose up -d --build --remove-orphans
-
-#Verify if vHost is right
+docker-compose up -d
 nginx -t
-
-#Reload in nginx service
 nginx -s reload
