@@ -108,7 +108,7 @@ State or Province (Ex: Georgia) [Default: "N/A"]:
 ## 🧪 After Installation
 
 - Open your browser and go to: `https://vault.your.domain`
-- Access the admin panel using the generated **ADMIN_TOKEN**
+- Access the admin panel `https://vault.your.domain/admin` using the password typing in certificate field
 
 ---
 
