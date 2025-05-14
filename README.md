@@ -128,5 +128,14 @@ Open an issue on GitHub or contact me at:
 📧 **rihanalkamim@gmail.com**  
 🔗 [github.com/rihanalkamim/Install-Vaultwarden](https://github.com/rihanalkamim/Install-Vaultwarden)
 
+---
+
+## 🙏 Acknowledgements
+
+A special thanks to the original creators of [Vaultwarden](https://github.com/dani-garcia/vaultwarden), the open-source password manager project.  
+This script was created to make the deployment process easier and faster, leveraging Vaultwarden's amazing work.
+
+For more details on Vaultwarden, check out the official repository:  
+🔗 [Vaultwarden - GitHub Repository](https://github.com/dani-garcia/vaultwarden)
 
 
