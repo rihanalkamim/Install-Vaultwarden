@@ -13,7 +13,7 @@ Sets up and configures a reverse proxy to serve Vaultwarden over HTTPS
 
 Ideal for users who want a fast, secure, and repeatable way to deploy their own password vault with minimal manual setup.
 
-⚠️ Make sure to run the script on a clean or controlled environment.
+⚠️ Make sure to run the script on a clean or controlled environment.  
 🛡️ Root privileges may be required for installing packages and setting up services.
 
 ---
