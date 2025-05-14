@@ -97,8 +97,8 @@ State or Province (Ex: Georgia) [Default: "N/A"]:
 /Vaultwarden
 ├── Cert/
 │   ├── fullchain.pem
-│   ├── vault.yourdomain.local.key
-│   └── vault.yourdomain.local.pem
+│   ├── vault.your.domain.key
+│   └── vault.your.domain.pem
 ├── compose.yaml
 ├── vw-data/ (Docker volume)
 ```
